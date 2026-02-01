@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/lib/supabase';
 import { Upload, Eye, FileImage, FileVideo, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -41,6 +42,7 @@ export default function RadTechDashboard() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loadingCases, setLoadingCases] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const [newCase, setNewCase] = useState({
     patient_name: '',
@@ -119,7 +121,13 @@ export default function RadTechDashboard() {
       return;
     }
 
+    // Show confirmation dialog
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmCreateCase = async () => {
     setUploading(true);
+    setShowConfirmation(false);
 
     try {
       const caseNumber = `CASE-${Date.now()}`;
@@ -294,6 +302,59 @@ export default function RadTechDashboard() {
             </DialogContent>
           </Dialog>
         </div>
+
+        <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Case Creation</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <p>Please review the case details before submitting:</p>
+                <div className="bg-slate-50 p-4 rounded-lg space-y-2 text-sm">
+                  <div>
+                    <span className="font-semibold text-slate-900">Patient:</span>{' '}
+                    <span className="text-slate-700">{newCase.patient_name}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">Patient ID:</span>{' '}
+                    <span className="text-slate-700">{newCase.patient_id}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">Study Type:</span>{' '}
+                    <span className="text-slate-700">{newCase.study_type}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">Assigned Doctor:</span>{' '}
+                    <span className="text-blue-600 font-medium">
+                      {doctors.find(d => d.id === newCase.assigned_to)?.full_name}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">Files:</span>{' '}
+                    <span className="text-slate-700">{files.length} file(s)</span>
+                  </div>
+                </div>
+                <p className="text-slate-600">
+                  Are you sure you want to create this case and assign it to{' '}
+                  <span className="font-semibold text-slate-900">
+                    {doctors.find(d => d.id === newCase.assigned_to)?.full_name}
+                  </span>?
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction 
+                onClick={handleConfirmCreateCase} 
+                disabled={uploading}
+                className="bg-white text-slate-900 border-2 border-slate-300 hover:bg-slate-50"
+              >
+                {uploading ? 'Creating...' : 'Confirm & Create Case'}
+              </AlertDialogAction>
+              <AlertDialogCancel className="bg-slate-900 text-white hover:bg-slate-800 hover:text-white">
+                Go Back
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Card>
           <CardHeader>
