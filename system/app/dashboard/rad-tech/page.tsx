@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,14 +69,26 @@ export default function RadTechDashboard() {
 
   const fetchDoctors = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .eq('role', 'doctor')
-        .order('full_name');
+      // Fetch only connected doctors for this rad tech
+      const { data: connections, error: connectionsError } = await supabase
+        .from('rad_tech_doctor_connections')
+        .select(`
+          doctor_id,
+          profiles!rad_tech_doctor_connections_doctor_id_fkey(id, full_name, email)
+        `)
+        .eq('rad_tech_id', user?.id);
 
-      if (error) throw error;
-      setDoctors(data || []);
+      if (connectionsError) throw connectionsError;
+
+      const connectedDoctors = connections?.map((c: any) => c.profiles).filter(Boolean) || [];
+      setDoctors(connectedDoctors);
+
+      // Show a helpful message if no doctors are connected
+      if (connectedDoctors.length === 0) {
+        toast.info('Add doctors to your connections in your profile to assign cases', {
+          duration: 5000,
+        });
+      }
     } catch (error: any) {
       toast.error('Failed to fetch doctors');
     }
@@ -261,18 +274,31 @@ export default function RadTechDashboard() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="assigned_to">Assign to Doctor</Label>
-                  <Select value={newCase.assigned_to} onValueChange={(value) => setNewCase({ ...newCase, assigned_to: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select doctor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {doctors.map((doctor) => (
-                        <SelectItem key={doctor.id} value={doctor.id}>
-                          {doctor.full_name} ({doctor.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {doctors.length === 0 ? (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800 mb-2">
+                        No doctors available. Please add doctors to your connections first.
+                      </p>
+                      <Link href="/dashboard/profile">
+                        <Button variant="outline" size="sm" className="w-full">
+                          Go to Profile to Add Doctors
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <Select value={newCase.assigned_to} onValueChange={(value) => setNewCase({ ...newCase, assigned_to: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select doctor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {doctors.map((doctor) => (
+                          <SelectItem key={doctor.id} value={doctor.id}>
+                            {doctor.full_name} ({doctor.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="files">Upload Files (Images/Videos)</Label>
