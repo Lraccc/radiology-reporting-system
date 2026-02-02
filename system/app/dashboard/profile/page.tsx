@@ -12,7 +12,7 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Camera, Loader2, Save, User, Check, X, ArrowLeft, Home, UserPlus, Trash2, Users } from 'lucide-react';
+import { Camera, Loader2, Save, User, Check, X, ArrowLeft, Home, UserPlus, Trash2, Users, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -37,6 +37,8 @@ export default function ProfilePage() {
   });
   const [connectedDoctors, setConnectedDoctors] = useState<any[]>([]);
   const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
+  const [filteredDoctors, setFilteredDoctors] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [isAddingDoctor, setIsAddingDoctor] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -106,11 +108,27 @@ export default function ProfilePage() {
       const connectedIds = connected.map((d: any) => d.id);
       const available = allDoctors?.filter((d: any) => !connectedIds.includes(d.id)) || [];
       setAvailableDoctors(available);
+      setFilteredDoctors(available); // Initialize filtered list
     } catch (error: any) {
       console.error('Error fetching connected doctors:', error);
       toast.error('Failed to load doctor connections');
     }
   };
+
+  // Filter doctors based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredDoctors(availableDoctors);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = availableDoctors.filter(
+        (doctor) =>
+          doctor.full_name.toLowerCase().includes(query) ||
+          doctor.email.toLowerCase().includes(query)
+      );
+      setFilteredDoctors(filtered);
+    }
+  }, [searchQuery, availableDoctors]);
 
   const handleAddDoctor = async () => {
     if (!selectedDoctorId || !user) return;
@@ -129,6 +147,7 @@ export default function ProfilePage() {
 
       toast.success('Doctor added to your connections!');
       setSelectedDoctorId('');
+      setSearchQuery('');
       setIsDialogOpen(false);
       await fetchConnectedDoctors();
     } catch (error: any) {
@@ -658,7 +677,7 @@ export default function ProfilePage() {
                     <DialogHeader>
                       <DialogTitle>Add Doctor to Your Connections</DialogTitle>
                       <DialogDescription>
-                        Select a doctor to add to your connection list. They will appear in the case assignment dropdown.
+                        Search and select a doctor to add to your connection list. They will appear in the case assignment dropdown.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -669,26 +688,69 @@ export default function ProfilePage() {
                       ) : (
                         <>
                           <div className="space-y-2">
-                            <Label htmlFor="doctor-select">Select Doctor</Label>
-                            <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
-                              <SelectTrigger id="doctor-select">
-                                <SelectValue placeholder="Choose a doctor" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableDoctors.map((doctor) => (
-                                  <SelectItem key={doctor.id} value={doctor.id}>
-                                    {doctor.full_name} ({doctor.email})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <Label htmlFor="doctor-search">Search Doctor</Label>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                              <Input
+                                id="doctor-search"
+                                type="text"
+                                placeholder="Search by name or email..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10"
+                              />
+                            </div>
                           </div>
-                          <div className="flex justify-end gap-2">
+
+                          {/* Doctors List */}
+                          <div className="space-y-2 max-h-80 overflow-y-auto border rounded-lg">
+                            {filteredDoctors.length === 0 ? (
+                              <p className="text-sm text-slate-500 text-center py-8">
+                                No doctors found matching "{searchQuery}"
+                              </p>
+                            ) : (
+                              filteredDoctors.map((doctor) => (
+                                <button
+                                  key={doctor.id}
+                                  type="button"
+                                  onClick={() => setSelectedDoctorId(doctor.id)}
+                                  className={`w-full text-left p-3 hover:bg-slate-50 transition-colors border-b last:border-b-0 ${
+                                    selectedDoctorId === doctor.id
+                                      ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                                      : ''
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarFallback className="bg-blue-500 text-white text-sm">
+                                        {doctor.full_name
+                                          .split(' ')
+                                          .map((n: string) => n[0])
+                                          .join('')
+                                          .toUpperCase()
+                                          .slice(0, 2)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                      <p className="font-medium text-slate-900">{doctor.full_name}</p>
+                                      <p className="text-sm text-slate-500">{doctor.email}</p>
+                                    </div>
+                                    {selectedDoctorId === doctor.id && (
+                                      <Check className="h-5 w-5 text-blue-500" />
+                                    )}
+                                  </div>
+                                </button>
+                              ))
+                            )}
+                          </div>
+
+                          <div className="flex justify-end gap-2 pt-2">
                             <Button
                               variant="outline"
                               onClick={() => {
                                 setIsDialogOpen(false);
                                 setSelectedDoctorId('');
+                                setSearchQuery('');
                               }}
                             >
                               Cancel
