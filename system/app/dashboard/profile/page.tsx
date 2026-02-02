@@ -82,7 +82,7 @@ export default function ProfilePage() {
         .select(`
           id,
           doctor_id,
-          profiles!rad_tech_doctor_connections_doctor_id_fkey(id, full_name, email, mobile_number)
+          profiles!rad_tech_doctor_connections_doctor_id_fkey(id, full_name, email, mobile_number, profile_picture_url)
         `)
         .eq('rad_tech_id', user.id);
 
@@ -98,7 +98,7 @@ export default function ProfilePage() {
       // Fetch all doctors to show available ones
       const { data: allDoctors, error: doctorsError } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name, email, mobile_number, profile_picture_url')
         .eq('role', 'doctor')
         .order('full_name');
 
@@ -722,14 +722,18 @@ export default function ProfilePage() {
                                 >
                                   <div className="flex items-center gap-3">
                                     <Avatar className="h-10 w-10">
-                                      <AvatarFallback className="bg-blue-500 text-white text-sm">
-                                        {doctor.full_name
-                                          .split(' ')
-                                          .map((n: string) => n[0])
-                                          .join('')
-                                          .toUpperCase()
-                                          .slice(0, 2)}
-                                      </AvatarFallback>
+                                      {doctor.profile_picture_url ? (
+                                        <AvatarImage src={doctor.profile_picture_url} alt={doctor.full_name} />
+                                      ) : (
+                                        <AvatarFallback className="bg-blue-500 text-white text-sm">
+                                          {doctor.full_name
+                                            .split(' ')
+                                            .map((n: string) => n[0])
+                                            .join('')
+                                            .toUpperCase()
+                                            .slice(0, 2)}
+                                        </AvatarFallback>
+                                      )}
                                     </Avatar>
                                     <div className="flex-1">
                                       <p className="font-medium text-slate-900">{doctor.full_name}</p>
@@ -790,16 +794,20 @@ export default function ProfilePage() {
                       key={doctor.id}
                       className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-blue-500 text-white text-sm">
-                            {doctor.full_name
-                              .split(' ')
-                              .map((n: string) => n[0])
-                              .join('')
-                              .toUpperCase()
-                              .slice(0, 2)}
-                          </AvatarFallback>
+                          {doctor.profile_picture_url ? (
+                            <AvatarImage src={doctor.profile_picture_url} alt={doctor.full_name} />
+                          ) : (
+                            <AvatarFallback className="bg-blue-500 text-white text-sm">
+                              {doctor.full_name
+                                .split(' ')
+                                .map((n: string) => n[0])
+                                .join('')
+                                .toUpperCase()
+                                .slice(0, 2)}
+                            </AvatarFallback>
+                          )}
                         </Avatar>
                         <div>
                           <p className="font-medium text-slate-900">{doctor.full_name}</p>
